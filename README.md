@@ -1,4 +1,4 @@
-# analisisMovilidadImagen
+# Analisis Movilidad Imagen
 Aplicacion prototipo que permite evaluar el comportamiento del transito mediante screenshots en tiempo real del sitio google maps.
 
 MANEJO:
