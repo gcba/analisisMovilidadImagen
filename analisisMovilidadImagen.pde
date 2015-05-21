@@ -1,43 +1,32 @@
 import java.awt.Robot;
 import java.awt.AWTException;
 import java.awt.Rectangle;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+
 int points = 0;  
 PImage screenshot; 
 String time = "";
 PrintWriter transRegs;
 boolean save_data = false; 
 
-class recordP {
-  float x, y;
-  float  r; 
-  float  g; 
-  float b;
-  recordP(float _x, float _y, float _r, float _g, float _b) {
-    x= _x;
-    y= _y;
-    r = _r;
-    g = _g;
-    b = _b;
-  }
-}
-ArrayList<recordP> obPoints = new ArrayList<recordP>();
 
-void setup() {q
+void setup() {
   size(900, 1000);
   smooth();
   cursor(CROSS);
   setFColors();
-  thread("requestData");
-  do {} while(time.length() > 3);
-  transRegs = createWriter("transito.csv");
-  transRegs.println("id,estado,tiempo");
+  String tsession = getActualTime();
+  transRegs = createWriter("GMTraffic_"+tsession+".csv");
+  
+  transRegs.println("id,status,st_value,lat,lon,timestamp");
+  transRegs.flush();
   frameRate(30);
 }
 void draw() {
+  ellipseMode(CENTER);
+  println("Mouse X: "+mouseX+" Mouse Y: "+mouseY);
   cursor(CROSS);
-  if (frameCount % 30 == 0) {
-    thread("requestData");
-  }
   strokeWeight(0.5f);
   screenshot();
   //updateStreetStatus();
@@ -103,6 +92,7 @@ void screenshot() {
 }
 
 void updateStreetStatus() {
+  String aTime = getActualTime("tsmode");
   for (int i = 0; i < obPoints.size (); i++) {
     recordP tmp = obPoints.get(i);
     color ct = screenshot.get((int)tmp.x, (int)tmp.y);
@@ -111,6 +101,8 @@ void updateStreetStatus() {
     float nb = blue(ct);
     int cID =  matchColor(nr, ng, nb);
     if (cID > -1 & cID <= TrafficColors.size()) {
+      float lon = map(tmp.x,0.0f,894.0f,(float)LON_MIN,(float)LON_MAX);
+      float lat = map(tmp.y,95.0f,982.0f,(float)LAT_MIN,(float)LAT_MAX);
       colorC c4m = TrafficColors.get(cID); 
       if (tmp.r != c4m.r || tmp.g != c4m.g || tmp.b != c4m.b) {
         tmp.r = c4m.r;
@@ -118,13 +110,14 @@ void updateStreetStatus() {
         tmp.b = c4m.b;
         obPoints.set(i, tmp);
         String trkPoint = " ";
+        int trkNum   = -1;
         switch(cID) {
-        case  0 : {trkPoint = "Transito RAPIDO"; break;}
-        case  1 : {trkPoint = "Transito NORMAL"; break;}
-        case  2 : {trkPoint = "Transito PESADO"; break;}
-        case  3 : {trkPoint = "Transito MUY PESADO"; break;}
+        case  0 : {trkPoint = "Transito RAPIDO"; trkNum =1; break;}
+        case  1 : {trkPoint = "Transito NORMAL"; trkNum =2; break;}
+        case  2 : {trkPoint = "Transito LENTO"; trkNum =3; break;}
+        case  3 : {trkPoint = "Transito MUY LENTO"; trkNum =4; break;}
         }
-        storedata(i, trkPoint);
+        storedata(i, trkPoint, trkNum, aTime,lat,lon);
       }
     }
   }
@@ -133,6 +126,7 @@ void updateStreetStatus() {
 
 
 void updateStreetStatus(int code ) {
+  String aTime = getActualTime("tsmode");
   for (int i = 0; i < obPoints.size (); i++) {
     recordP tmp = obPoints.get(i);
     color ct = screenshot.get((int)tmp.x, (int)tmp.y);
@@ -142,19 +136,21 @@ void updateStreetStatus(int code ) {
     int cID =  matchColor(nr, ng, nb);
     if (cID > -1 & cID <= TrafficColors.size()) {
       colorC c4m = TrafficColors.get(cID); 
-     
+        float lon = map(tmp.x,0.0f,894.0f,(float)LON_MIN,(float)LON_MAX);
+        float lat = map(tmp.y,95.0f,982.0f,(float)LAT_MIN,(float)LAT_MAX);
         tmp.r = c4m.r;
         tmp.g = c4m.g; 
         tmp.b = c4m.b;
         obPoints.set(i, tmp);
         String trkPoint = " ";
+        int    trkNum   = -1 ;
         switch(cID) {
-        case  0 : {trkPoint = "Transito RAPIDO"; break;}
-        case  1 : {trkPoint = "Transito NORMAL"; break;}
-        case  2 : {trkPoint = "Transito PESADO"; break;}
-        case  3 : {trkPoint = "Transito MUY PESADO"; break;}
+        case  0 : {trkPoint = "Transito RAPIDO"; trkNum = 1; break;}
+        case  1 : {trkPoint = "Transito NORMAL"; trkNum = 2; break;}
+        case  2 : {trkPoint = "Transito LENTO"; trkNum = 3; break;}
+        case  3 : {trkPoint = "Transito MUY LENTO"; trkNum = 1; break;}
         }
-        if(frameCount % ONEMINUTE == 0){storedata(i, trkPoint);}
+        if(frameCount % ONEMINUTE == 0){storedata(i, trkPoint,trkNum,aTime,lat,lon);}
         
       
     }
@@ -162,6 +158,7 @@ void updateStreetStatus(int code ) {
 }
 
 void mousePressed() {
+  String aTime = getActualTime("tsmode");
   float tx = mouseX; 
   float ty = mouseY;
   color ct = screenshot.get((int)tx, (int)ty);
@@ -174,31 +171,38 @@ void mousePressed() {
     println("Color ID: " + cID);
     colorC c = TrafficColors.get(cID);
     recordP tmp = new recordP((float)tx, (float)ty, c.r, c.g, c.b);
+    float lon = map(tmp.x,0.0f,894.0f,(float)LON_MIN,(float)LON_MAX);
+    float lat = map(tmp.y,95.0f,982.0f,(float)LAT_MIN,(float)LAT_MAX);
     obPoints.add(tmp);
     String trkPoint = " ";
+    int    trkNum   = -1;
     switch(cID) {
     case  0 :
       {
         trkPoint = "Transito RAPIDO"; 
+        trkNum   = 1;
         break;
       }
     case  1 :
       {
         trkPoint = "Transito NORMAL"; 
+        trkNum   = 2;
         break;
       }
     case  2 :
       {
-        trkPoint = "Transito PESADO"; 
+        trkPoint = "Transito LENTO"; 
+        trkNum   = 3;
         break;
       }
     case  3 :
       {
-        trkPoint = "Transito MUY PESADO"; 
+        trkPoint = "Transito MUY LENTO";
+        trkNum   = 4; 
         break;
       }
     }
-    storedata(obPoints.size()-1, trkPoint);
+    storedata(obPoints.size()-1, trkPoint,trkNum,aTime,lat,lon);
   }
 }
 
@@ -225,13 +229,12 @@ void keyPressed() {
 
 
 
-void storedata(int _id, String Status) {
-  transRegs.println(_id+",\""+Status+"\",\""+time+"\"");
-}
-
-void requestData() {
-  JSONObject json = loadJSONObject("http://time.jsontest.com/");
-  time = json.getString("date")+" "+ json.getString("time");
+void storedata(int _id, String Status, int n, String _time, float lat, float lon) {
+  ellipseMode(CORNER);
+  fill(255,0,0);
+  ellipse(50,200,20,20);
+  transRegs.println(_id+",\""+Status+"\","+n+","+lat+","+lon+",\""+_time+"\"");
+  transRegs.flush();
 }
 
 
@@ -278,6 +281,21 @@ void printUI() {
     case 3: {text("MUY LENTO", mod+mod*i, height-105);break;}
     case 4: {text("NO-DATA", mod+mod*i, height-105);break;}
   }
+  if(save_data==true){
+    fill(255,0,0);
+    ellipse(50,height-93,20,20);
+  }
   }
 }
+
+String getActualTime(){
+  String d = hour()+"."+minute()+"."+second()+" "+day()+"-"+month()+"-"+year();
+  return d;
+}
+
+String getActualTime(String mode){
+  String d = hour()+":"+minute()+":"+second()+" "+day()+"/"+month()+"/"+year();
+  return d;
+}
+
 

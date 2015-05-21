@@ -24,7 +24,34 @@ void setFColors() {
 }
 final int ONESECOND = 30;
 final int ONEMINUTE = ONESECOND * 60;
-float STOREDATAEVERY = 60 * ONESECOND;
+float STOREDATAEVERY = ONESECOND;
 int mod = 100; //MOD UI
 
+class recordP {
+  float x, y;
+  float  r; 
+  float  g; 
+  float b;
+  recordP(float _x, float _y, float _r, float _g, float _b) {
+    x= _x;
+    y= _y;
+    r = _r;
+    g = _g;
+    b = _b;
+  }
+}
+ArrayList<recordP> obPoints = new ArrayList<recordP>();
+final String ACTUALQUERRY = " https://www.google.com.ar/maps/@-34.5563021,-58.4509152,14z/data=!5m1!1e1";
 //QUERY GOOGLEMAPS https://www.google.com.ar/maps/@-34.6019934,-58.3773241,16z/data=!5m1!1e1
+//QUERY GOOGLEMAPS River-Cruzeiro: https://www.google.com.ar/maps/@-34.5511241,-58.4572881,15z/data=!5m1!1e1
+final float LON_MIN = -58.474004;
+
+final float LON_MAX = -58.430359;
+
+final float LAT_MIN = -34.534740;
+final float LAT_MAX = -34.567435;
+
+//LEFTV LON -58.484175 RIGTH  LON -58.381006
+//TOPV LAT -34.525088  BOTTOM LAT -34.576410
+//GMQ https://www.google.com.ar/maps/@-34.5511241,-58.4572881,15z/data=!5m1!1e1
+
