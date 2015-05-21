@@ -20,7 +20,7 @@ void setFColors() {
   TrafficColors.add(new colorC(236, 104, 0));// TRANSITO NORMAL
   TrafficColors.add(new colorC(224, 0, 0));// TRANSITO LENTO
   TrafficColors.add(new colorC(141, 0, 10));// TRANSITO MUY LENTO
-  //TrafficColors.add(new colorC(228, 225, 210));// TRANSITO MUERTO
+  TrafficColors.add(new colorC(246, 244, 238));// NO DATA
 }
 final int ONESECOND = 30;
 final int ONEMINUTE = ONESECOND * 60;

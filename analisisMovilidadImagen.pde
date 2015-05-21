@@ -18,17 +18,17 @@ void setup() {
   setFColors();
   String tsession = getActualTime();
   transRegs = createWriter("GMTraffic_"+tsession+".csv");
-  
   transRegs.println("id,status,st_value,lat,lon,timestamp");
   transRegs.flush();
   frameRate(30);
 }
 void draw() {
   ellipseMode(CENTER);
-  println("Mouse X: "+mouseX+" Mouse Y: "+mouseY);
+  //println("Mouse X: "+mouseX+" Mouse Y: "+mouseY);
   cursor(CROSS);
   strokeWeight(0.5f);
   screenshot();
+  //dumpDownColor();
   //updateStreetStatus();
   if(frameCount % ONESECOND  == 0 ){
    if(save_data == true){updateStreetStatus(0);}
@@ -36,22 +36,26 @@ void draw() {
   image(screenshot, 0, 0, width, height);
   color cross = screenshot.get(mouseX, mouseY);
   int crossColorID =  matchColor(red(cross), green(cross), blue(cross));
-  if (crossColorID > -1 & crossColorID < 4) {
+  if (crossColorID > -1 & crossColorID < TrafficColors.size()) {
     colorC cc = TrafficColors.get(crossColorID);
     fill(cc.r, cc.g, cc.b, 250);
-    ellipse(mouseX+8, mouseY+8, 10, 10);
+    ellipse(mouseX+20, mouseY+20, 30, 30);
   }
 
   for (int i = 0; i < obPoints.size (); i++) {
     recordP t = obPoints.get(i);
     fill(t.r, t.g, t.b);
-    stroke(0);
-    ellipse(t.x, t.y, 20, 20);
+    //stroke(0);
+    noStroke();
+    fill(0,100);
+    ellipse(t.x+1, t.y+1, 15, 15);
+    fill(t.r, t.g, t.b);
+    ellipse(t.x, t.y, 15, 15);
     fill(0);
     textSize(10);
     String nro = str(i);
     text(nro, t.x-(nro.length()-1 ), t.y+4);
-    println("R: "+t.r+" G: "+t.g+" B: "+t.b);
+    //println("R: "+t.r+" G: "+t.g+" B: "+t.b);
     int cID =  matchColor(t.r, t.g, t.b);
 
     String trkPoint = " ";
@@ -74,6 +78,11 @@ void draw() {
     case  3 :
       {
         trkPoint = "Transito MUY PESADO"; 
+        break;
+      }
+        case  4 :
+      {
+        trkPoint = "NO DATA"; 
         break;
       }
     }
@@ -116,6 +125,7 @@ void updateStreetStatus() {
         case  1 : {trkPoint = "Transito NORMAL"; trkNum =2; break;}
         case  2 : {trkPoint = "Transito LENTO"; trkNum =3; break;}
         case  3 : {trkPoint = "Transito MUY LENTO"; trkNum =4; break;}
+        case  4 : {trkPoint = "NO DATA"; trkNum =0; break;}
         }
         storedata(i, trkPoint, trkNum, aTime,lat,lon);
       }
@@ -134,7 +144,7 @@ void updateStreetStatus(int code ) {
     float ng = green(ct);  
     float nb = blue(ct);
     int cID =  matchColor(nr, ng, nb);
-    if (cID > -1 & cID <= TrafficColors.size()) {
+    if (cID > -1 & cID <= 5) {
       colorC c4m = TrafficColors.get(cID); 
         float lon = map(tmp.x,0.0f,894.0f,(float)LON_MIN,(float)LON_MAX);
         float lat = map(tmp.y,95.0f,982.0f,(float)LAT_MIN,(float)LAT_MAX);
@@ -149,6 +159,7 @@ void updateStreetStatus(int code ) {
         case  1 : {trkPoint = "Transito NORMAL"; trkNum = 2; break;}
         case  2 : {trkPoint = "Transito LENTO"; trkNum = 3; break;}
         case  3 : {trkPoint = "Transito MUY LENTO"; trkNum = 1; break;}
+        case  4 : {trkPoint = "NO DATA"; trkNum =0; break;}
         }
         if(frameCount % ONEMINUTE == 0){storedata(i, trkPoint,trkNum,aTime,lat,lon);}
         
@@ -177,30 +188,11 @@ void mousePressed() {
     String trkPoint = " ";
     int    trkNum   = -1;
     switch(cID) {
-    case  0 :
-      {
-        trkPoint = "Transito RAPIDO"; 
-        trkNum   = 1;
-        break;
-      }
-    case  1 :
-      {
-        trkPoint = "Transito NORMAL"; 
-        trkNum   = 2;
-        break;
-      }
-    case  2 :
-      {
-        trkPoint = "Transito LENTO"; 
-        trkNum   = 3;
-        break;
-      }
-    case  3 :
-      {
-        trkPoint = "Transito MUY LENTO";
-        trkNum   = 4; 
-        break;
-      }
+    case  0 :{ trkPoint = "Transito RAPIDO";    trkNum = 1; break; }
+    case  1 :{ trkPoint = "Transito NORMAL";    trkNum = 2; break; }
+    case  2 :{ trkPoint = "Transito LENTO";     trkNum = 3; break; }
+    case  3 :{ trkPoint = "Transito MUY LENTO"; trkNum = 4; break; }
+    case  4 : {trkPoint = "NO DATA"; trkNum =0; break;}
     }
     storedata(obPoints.size()-1, trkPoint,trkNum,aTime,lat,lon);
   }
@@ -283,7 +275,7 @@ void printUI() {
   }
   if(save_data==true){
     fill(255,0,0);
-    ellipse(50,height-93,20,20);
+    ellipse(20,height-93,20,20);
   }
   }
 }
@@ -298,4 +290,11 @@ String getActualTime(String mode){
   return d;
 }
 
+void dumpDownColor(){
+  color ct = screenshot.get(mouseX, mouseY);
+  float r = red(ct); 
+  float g = green(ct); 
+  float b = blue(ct);
+  println("Actual Color : r = "+r+", g = "+g+", b = "+b);
+}
 
