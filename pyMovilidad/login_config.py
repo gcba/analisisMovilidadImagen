@@ -1,5 +1,5 @@
 import base64
 
-username = 'superadmin@email.com'
-password = 'superadmin.'
+username = 'USERNAME'
+password = 'PASSWORD'
 authentication = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')

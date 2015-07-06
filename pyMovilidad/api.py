@@ -1,11 +1,11 @@
 import endpoints_config
-import login_config
 import urllib
 import urllib2
 import json
 import sys
 
-log_requests = False
+log_requests = True
+token = 'superadmin.'
 
 
 class Endpoint(object):
@@ -16,13 +16,13 @@ class Endpoint(object):
 
     @staticmethod
     def request(config, params=None):
-        if params:
-            params['_format'] = 'json'
-        data = urllib.urlencode(params or {})
+        params = params or {}
+        params['_format'] = 'json'
+        data = urllib.urlencode(params)
 
         request = urllib2.Request(config['url'], data, {'Content-Type': 'application/x-www-form-urlencoded'})
         request.get_method = lambda: config['method']
-        request.add_header("Authorization", "Basic %s" % login_config.authentication)
+        request.add_header("token", token)
 
         response = urllib2.urlopen(request).read()
         json_response = json.loads(response)
@@ -181,3 +181,31 @@ class Data(Endpoint):
             return '%s<Empty>' % self.__class__.__name__
         else:
             return '%s<%s, %s>' % (self.__class__.__name__, self.attrs['date'], self.attrs['data'])
+
+
+class MeasurementMethodology(Endpoint):
+    config = endpoints_config.methodology
+
+
+class MeasuredUnit(Endpoint):
+    config = endpoints_config.unit
+
+
+class MeasuredParameter(Endpoint):
+    config = endpoints_config.parameter
+
+
+class MeasureFrequency(Endpoint):
+    config = endpoints_config.frequency
+
+
+class Homologation(Endpoint):
+    config = endpoints_config.homologation
+
+
+class Brand(Endpoint):
+    config = endpoints_config.brand
+
+
+class Model(Endpoint):
+    config = endpoints_config.model
