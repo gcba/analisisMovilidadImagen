@@ -1,12 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-import os, sys, time, datetime, subprocess, api, csv, socket
+import os, sys, time, datetime, subprocess, api, csv, socket, os.path
+from os import rename 	
 
 
 
 #CONFIGS!
 visibleDebugger = False
-timeBetweenCaptures = 30
+timeBetweenCaptures = 120
 activeSensors = 1102
 
 bugFixed = True
@@ -47,28 +48,47 @@ cleanMapPhantomJS = """
 					"""
 
 
-def getGoogleMapsPict():
-	if visibleDebugger==True:
-		driver = webdriver.Firefox()
-	else:
-		driver = webdriver.PhantomJS()
-		driver.set_window_size(2300, 2700)
-	driver.get(mapQuery)
-	time.sleep(5)
-	driver.execute_script(addJQuery)
-	time.sleep(5)
-	driver.execute_script(cleanMapPhantomJS)
-	time.sleep(5)
-	fileName = imgFoleders+actualTime()+'.png'
-	driver.save_screenshot(fileName)
-	driver.quit()
+def getGoogleMapsPict(retry = 0):
+	print ">> Obteniendo imagenes de  google.maps..."
+	try:
+		if visibleDebugger==True:
+			driver = webdriver.Firefox()
+		else:
+			driver = webdriver.PhantomJS()
+			driver.set_window_size(2300, 2700)
+			try:
+				driver.get(mapQuery)
+				time.sleep(5)
+				driver.execute_script(addJQuery)
+				time.sleep(5)
+				driver.execute_script(cleanMapPhantomJS)
+				time.sleep(5)
+			except Exception as e:
+				retry +=1
+				msg = "FALLO PHANTOMJS,(%s))Reintentando (%d)" % e,retry
+				log(msg)
+				getGoogleMapsPict(retry)
+		fileName = imgFoleders+actualTime()+'.png'
+		driver.save_screenshot(fileName)
+		driver.quit()
+	except Exception , e:
+		retry += 1
+		msg = "FALLO PHANTOMJS, Reintentando (%d)" % retry
+		log(msg)
+		getGoogleMapsPict(retry)
+
 	print "Picture file: " + fileName
-	
+	return fileName
 
 
 def actualTime():
 	actTime = time.time()
 	return datetime.datetime.fromtimestamp(actTime).strftime('%Y-%m-%d %H_%M_%S')
+
+
+SESSION = actualTime()
+
+
 
 def is_connected():
   try:
@@ -76,61 +96,105 @@ def is_connected():
     s = socket.create_connection((host, 80), 2)
     return True
   except:
-     print "Simon says: F*ck u internet!!"
+  	log("DESCONECTADO DE INTERNET")
   return False
 
 
 
 def pushDataToApi(lastRegPushed):
+	log("Pusheando datos a la api...")
 	data = {}
 	with open(DATAFILE,"rb") as csvfile:
 		reader = csv.DictReader(csvfile)
 		sensor_id = "nan"
-		n = 1
-		s = 0
+		c = 1
+		firstValue = True
 		rowsCount = 0
+		s = 0
+		r = 1
 		for row in reader:
-			if(rowsCount > (lastRegPushed*activeSensors)-1):
-				if (int(row['gId']) < 79 ):
-					if (sensor_id != row['gId']):
-						if(s > 0):
+			if(s >= lastRegPushed):	
+				if(is_connected() == True):
+					if(sensor_id != row['gId'] & firstValue != True):
+						try:
+							log("Pusheando sensor: %s " % str(row['gId']))
 							response = api.Data.dynamic_create(data)
+							log("Push CORRECTO sensor: %s" % str(row['gId'])
+						except Exception as e:
+							log("!!!! FALLO PUSH DEL SENSOR: %s !!!!" % str(row['gId'])
+						sensor_id = row['gId']
 						data = {}
-						data['id'] =row['gId']
-						n = 1
-						sensor_id = str(row['gId'])
-						s+=1
-					dataType = 'datatype'+str(n) 
-					data[dataType] = row['datatype']
-					sdata = 'data'+str(n)
-					data[sdata] =  row['value']
-					n += 1
-			rowsCount += 1
-		print "Sensores Actualizados: "+str(s)
-	return lastRegPushed+1
+						r = 1
+					data = {
+					'id%n'%r :sensor_id,
+					'datatype%d' % r:row['datatype'],
+					'data%d' % r : row['value'],
+					}
+					r+=1
+					firstValue = False
+				else:
+					log('!!! FALLO CONEXION A INTERNET !!!')
+			s += 1	
+	return lastRegPushed+s
+
 		
+
+def clearDataSensorFile():
+	if(os.path.isfile(DATAFILE)):
+		busdf = 0
+		nn = "./config_amov/dataSensores.csv.%d.old" % busdf
+		while os.path.isfile(nn):
+			busdf +=1 
+			nn = "./config_amov/dataSensores.csv.%d.old" % busdf
+		os.renames(DATAFILE,nn)
+		with open(DATAFILE,'w') as sensorDB:
+			sensorDB.write("id,value,gId,datatype,refImg,timestamp\n")
+		sensorDB.close()
+		log("Backup de Archivo datos \"%s\" salvado bajo el nombre: %s" % (DATAFILE,nn))
+
+
 
 def main():
 	try:
+		log("Inicio de session")
+		#clearDataSensorFile()
 		lastRegPushed = 0
 		while True:
 			if(is_connected() == False):
 				time.sleep(1)
 			else:
-				getGoogleMapsPict()
-				subprocess.Popen(['open', '-a', 'config_amov.app', '-n', '--args', '.config_amov/config_amov.app'])
-				time.sleep(timeBetweenCaptures/2)
+				inTime = time.time()
+				i = getGoogleMapsPict()
+				if(os.path.isfile(i)):
+					log("Analizando Imagen")
+					pro = subprocess.Popen(['open', '-a', 'config_amov.app', '-n', '--args', '.config_amov/config_amov.app'])
+					while os.path.isfile(i): 
+						time.sleep(1)
+					time.sleep(6)
 				lastRegPushed =  pushDataToApi(lastRegPushed)
-				time.sleep(timeBetweenCaptures/2)
-			
-	except KeyboardInterrupt:
+				wait_time = int(timeBetweenCaptures - (time.time()-inTime))
+				if wait_time > 0:
+					msg = ">> wait: "+str(wait_time)+" segundos."
+					log(msg)
+					time.sleep(wait_time) 
+				else:
+					msg = "** Desfasado en tiempo deseado por: "+str(abs(wait_time))+" segs **"
+					log(msg)
+	except KeyboardInterrupt as e:
+		log("Sesion terminada (%s)" % e)
 		exit
-		print " "
-		print "...GoodBye!"
+
 	
+
+def log(errorMsg):
+	now = actualTime()
+	filelog = "gm_%s_logs.txt" % SESSION
+	with open(filelog, 'a') as logFile:
+		msg = ">> [%s]: %s \n" %(now,errorMsg)
+		logFile.write(msg)
+		print msg
 
 
 
 if __name__ == '__main__':
-	print ">> Getting google.maps imgs..."
 	main()
